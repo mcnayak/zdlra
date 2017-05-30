@@ -1,0 +1,65 @@
+Steps to use it
+------------------
+
+1. In source (solaris), first create a directory and copy the 2 attached files into it
+
+2. Modify xtt.properties to add the following
+    
+    a. sbtlibparms -- this is the SBT library information of the target rman, since the file is going to be same in target and source its better to
+        create the file in source and copy it over. This SBT parms will be used by target to perform the restore
+    
+    sbtlibparms="SBT_LIBRARY=/home/oracle/arun/libra.so, ENV=(RA_WALLET='location=file:/u01/app/oracle/product/12.1.0.2/dbhome_1/dbs/zdlra credential_alias=scaz15ingest-scan1:1521/zdlra9')"
+
+    b. resparallel -- how many restore/recover rman sessions can run in parallel. If none is defined default is 3
+
+        resparallel=4
+
+    c. ttsnames -- the list of tablespaces within single quotes that needs to be transported
+
+        ttsnames='TBSSZ1','TBSSZ2'
+
+3. The script needs a temporary directory to generate few files, so set a temp directory
+
+    export TMPDIR /tmp
+
+    The script will create a subdirectory inside that and use that for creating temporary files [e.g. /tmp/ramigratedb]
+
+4. cd to the directory where the 2 files are copied and run setuprestore
+
+    perl dbmigusera.pl  --sqlra 'rasys/ra@scaz15ingest-scan1:1521/zdlra9:dedicated' --sqlsys '/ as sysdba' --setuprestore 
+
+    The sqlra is the connect string to the RA catalog owner
+    The sqlsys is the sqlplus connect string to source database, if not provided defaults to '/ as sysdba'
+
+5. The above will generate a file called res.txt, copy that /tmp//ramigratedb/res.txt to target tmpdir
+
+6. In target follow steps 1 and copy over modified xtt.properties and perl script to directory. This directory should not be same as 
+    temp directory
+
+7. Repeat step 3 in target
+
+8. Perform restore
+
+    perl dbmigusera.pl --rmanra='rauser11/welcome1@scaz15ingest-scan1:1521/zdlra9' --restore
+
+    rmanra is connect string to connect to catalog in RA
+
+    e.g. rman target / catalog rman/rman@inst2 ... so rmanra = rman/rman@inst2
+
+9. Go back to source and setuprecover
+
+    perl dbmigusera.pl  --sqlra 'rasys/ra@scaz15ingest-scan1:1521/zdlra9:dedicated' --sqlsys '/ as sysdba' --setuprecover
+
+10. This will create a file rec.txt, copy it over just like step 5
+
+11. In target perform recover
+
+    perl dbmigusera.pl --rmanra='rauser11/welcome1@scaz15ingest-scan1:1521/zdlra9' --recover
+
+12. In source make the TBS's read only and repeat step 9 and 10
+
+13. In target repeat step 11
+
+14. In source expdp metadata [export]
+
+15. In target impdp metadata [import]
